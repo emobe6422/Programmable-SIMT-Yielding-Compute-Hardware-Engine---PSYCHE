@@ -1,0 +1,1 @@
+I will be sure to include my entire Claude conversation as proof of my genuine work. Going forward, I want to use no AI for RTL or verification even if it makes me faster. I've noticed it makes me a worse HDE as well so I will stay away but will still use it for learning purposes.
