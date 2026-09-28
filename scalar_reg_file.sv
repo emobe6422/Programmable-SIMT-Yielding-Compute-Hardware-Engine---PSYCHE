@@ -2,17 +2,18 @@
 
 /* Notes:
  * - #116 still doesnt make sense
- * - How to deal with control signals?
- * - Need to write up the SCC conditions
- * - do we really want scc to be something
+ * - What will generate the control signal?
+ * - Need to write up the SCC conditions/evaluate it more
+ * - revisit 117-127 with the X thing
+ * - try reading trash values and see what happens. No reset pins for reg file
  */
 
  module scalar_reg_file #(
     parameter REG_COUNT = 61 //# of scalar registers
     )
     (
-    input logic clk, rst_n,
-    input logic write_back, //control signal
+    input logic clk,
+    input logic write_enable, //control signal
     input logic [6:0] rs1, rs2,
     input logic [5:0] rd,
     input logic [31:0] data_in,
@@ -21,8 +22,7 @@
      * can decide if they want to convert it.
      */
     output logic [31:0] data_out_1, data_out_2
-    );
-    
+    );    
     //read/write
     logic [31:0] scalar_registers [0:REG_COUNT-1];
     //making the register unpacked leads to unforseen issues so vcc, m0, exec will not be packed
@@ -68,30 +68,26 @@
         end else if (rs == 7'd115) begin
             //SCC
         end else if (rs == 7'd116) begin
-            //16 bit constant
-        end else begin
-            //random bullshit
+            //16 bit instruction stream thing
+            
+        end else if (rs inside {[7'd117:7'd127]}) begin
+            //outliers that shouldnt do anything
+            return 'X;
         end
     endfunction
     
     //--------------------------------------------------------//  
-   
-    always_comb begin 
+    
+    always_comb begin
         vccz = {{31{1'b0}}, (vcc == '0)};
         execz ={{31{1'b0}}, (exec == '0)};
+        data_out_1 <= decode_scalar_operand(rs1, scalar_registers, vcc, m0, exec, vccz, execz);
+        data_out_2 <= decode_scalar_operand(rs2, scalar_registers, vcc, m0, exec, vccz, execz);
+        
     end
-    
     always_ff @ (posedge clk) begin
-        if (!rst_n) begin
-            foreach (scalar_registers[i]) begin
-                scalar_registers[i] <= '0;
-            end
-            vcc  <= '0;
-            m0   <= '0;
-            exec <= '0;
-        end else begin
-            data_out_1 <= decode_scalar_operand(rs1, scalar_registers, vcc, m0, exec, vccz, execz);
-            data_out_2 <= decode_scalar_operand(rs2, scalar_registers, vcc, m0, exec, vccz, execz);
+        if (write_enable) begin
+            scalar_registers[rd] <= data_in;
         end
     end
 endmodule
