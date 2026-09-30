@@ -1,14 +1,14 @@
 `timescale 1ns /1ps
 
 /* Notes:
- * - #116 still doesnt make sense
+ * - #116? Instruction stream constant !!REMOVED!!
  * - What will generate the control signal?
  * - Need to write up the SCC conditions/evaluate it more
- * - revisit 117-127 with the X thing
- * - try reading trash values and see what happens. No reset pins for reg file
+ * - returning the value in SCC
+ * - No reset pins for reg file
  */
 
- module scalar_reg_file #(
+module scalar_reg_file #(
     parameter REG_COUNT = 61 //# of scalar registers
     )
     (
@@ -32,8 +32,6 @@
     //read only derived bits (assign w/ always_comb)
     logic [31:0] vccz; //113 {31'b0, vccz}
     logic [31:0] execz; //114 {31'b0, execz}
-    
-    logic [31:0] BIG_NUMBA; //WTF IS THIS??? #116
     //117-127 empty
     
     //--------------------------------------------------------//   
@@ -67,10 +65,7 @@
             return execz;
         end else if (rs == 7'd115) begin
             //SCC
-        end else if (rs == 7'd116) begin
-            //16 bit instruction stream thing
-            
-        end else if (rs inside {[7'd117:7'd127]}) begin
+        end else if (rs inside {[7'd116:7'd127]}) begin
             //outliers that shouldnt do anything
             return 'X;
         end
@@ -83,11 +78,18 @@
         execz ={{31{1'b0}}, (exec == '0)};
         data_out_1 <= decode_scalar_operand(rs1, scalar_registers, vcc, m0, exec, vccz, execz);
         data_out_2 <= decode_scalar_operand(rs2, scalar_registers, vcc, m0, exec, vccz, execz);
-        
     end
     always_ff @ (posedge clk) begin
         if (write_enable) begin
-            scalar_registers[rd] <= data_in;
+            if (rd inside {[7'd0:7'd60]}) begin
+                scalar_registers[rd] <= data_in;
+            end else if (rd == 7'd61) begin
+                vcc <= data_in;
+            end else if (rd == 7'd62) begin
+                m0 <= data_in;
+            end else if (rd == 7'd63) begin
+                exec <= data_in;
+            end
         end
     end
 endmodule
