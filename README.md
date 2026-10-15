@@ -1,1 +1,3 @@
-I want to use no AI for RTL or verification even if it makes me faster. I've noticed it makes me a worse HWE as well so I will stay away but will still use it EXTENSIVELY for learning purposes. UVM and C++ emulator coming soon.
+No AI used for RTL generation. AI (Claude) used a TON for learning purposes.
+
+UVM, Assembler and Emulator are being made in parallel currently.
