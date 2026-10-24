@@ -1,4 +1,4 @@
-No AI used for RTL generation. AI (Claude) used a TON for learning purposes.
+No AI used for RTL generation. AI used for help with emulator and assembler.
 
 UVM, Assembler and Emulator are being made in parallel currently.
 
