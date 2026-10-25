@@ -27,42 +27,40 @@ module scalar_ALU(
         branch_flag =  1'b0;
         
         case (alu_control)
-            5'b00000 : sum = data_in_1 +  data_in_2; //add, addi
-            5'b00001 : sum = data_in_1 ^  data_in_2; //xor, xori
-            5'b00010 : sum = data_in_1 |  data_in_2; //or, ori
-            5'b00011 : sum = data_in_1 &  data_in_2; //and, andi
-            5'b00100 : sum = data_in_1 -  data_in_2; //sub
-            5'b00101 : ; //multiplication goes here
-            
-            
-            5'b00110 : sum = data_in_1 << data_in_2[4:0]; //sll + slli
-            5'b00111 : sum = data_in_1 >> data_in_2[4:0]; //srl + srli
-            5'b01000 : sum = $signed(data_in_1) >>> data_in_2[4:0]; //sra + srai
-            5'b01001 : ; //CMP_EQ, LT, GE, LTU, GEU (funct3)
-            5'b01010 : ; //LUI
-            5'b01011 : ; //AUIPC
-            5'b01100 :  //branch/cbranch
+            5'b00000 : sum = data_in_1 +  data_in_2; //ADD, ADDI
+            5'b00001 : sum = data_in_1 ^  data_in_2; //XOR, XORI
+            5'b00010 : sum = data_in_1 |  data_in_2; //OR, ORI
+            5'b00011 : sum = data_in_1 &  data_in_2; //AND, ANDI
+            5'b00100 : sum = data_in_1 -  data_in_2; //SUB
+            5'b00101 : ; //MUL
+            5'b00110 : ; //MULQ
+            5'b00111 : sum = data_in_1 << data_in_2[4:0]; //SLL, SLLI
+            5'b01000 : sum = data_in_1 >> data_in_2[4:0]; //SRL, SRLI
+            5'b01001 : sum = $signed(data_in_1) >>> data_in_2[4:0]; //SRA, SRAI
+            //set SCC
+            5'b01010 : ; //CMP_EQ, LT, GE, LTU, GEU (funct3)
+            5'b01011 : ; //LUI
+            5'b01100 : ; //AUIPC    
+            5'b01101 :  //branch/cbranch
                 case (funct7[3:0]) //only need the first 4 bits
                     4'b0000 : branch_flag = 1 ; //BRANCH
                     4'b0001 : branch_flag = (scc == 0)? 1 : 0 ; //CBRANCH_SCCZ
                     4'b0010 : branch_flag = (scc == 1)? 1 : 0 ; //CBRANCH_SCCNZ
-                    4'b0011 : ;
-                    4'b0100 : ;
-                    4'b0101 : ;
-                    4'b0110 : ;
-                    4'b0111 : ; //BARRIER
-                    4'b1000 : ; //WAIT_CNT
-                    4'b1001 : ; //END_PGM
+                    4'b0011 : ; //CBRANCH_VCC
+                    4'b0100 : ; //CBRANCH_VCCNZ
+                    4'b0101 : ; //CBRANCH_EXEC
+                    4'b0110 : ; //CBRANCH_EXECNZ
                     default : branch_flag = 0; 
-                endcase           
-            5'b01101 : ;
-            5'b01110 : ;
-            5'b01111 : ;
-            5'b10000 : ;
-            5'b10001 : ;
-            5'b10010 : ;
-            5'b10011 : ;
-            5'b10110 : ;
+                endcase  
+            5'b01110 : ; //BARRIER
+            5'b01111 : ; //WAIT_CNT
+            5'b10000 : ; //END_PGM
+            5'b10001 : ; //CBRANCH_I_FORK
+            5'b10010 : ; //CMOV
+            5'b10011 : ; //CBRANCH_JOIN
+            5'b10100 : ; //ABSOLUTE
+            5'b10101 : ; //JAL
+            5'b10110 : ; //JALR
             default: ;
         endcase
     end
