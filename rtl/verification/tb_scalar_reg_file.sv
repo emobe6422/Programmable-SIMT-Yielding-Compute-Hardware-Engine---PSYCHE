@@ -2,7 +2,7 @@
 
 /* Notes:
  * - VCC, EXEC and m0 are not explicitly set by the user, but I will anyway for testing purposes
- * - 
+ * - This file LOWK outdated asf. Useless
  */
 
 module tb_scalar_reg_file();
