@@ -1,0 +1,105 @@
+Scalar Instructions
+R-Type instructions:
+AND
+OR
+XOR
+ADD
+SUB
+MUL (read up on how it affects Q16.16. Need to produce a 64 bit #)
+MULQ
+SLL
+SRL
+SRA
+I-Type instructions:
+ANDI
+ORI
+XORI
+ADDI
+MULI  (read up on how it affects Q16.16. Need to produce a 64 bit #).
+SLLI
+SRLI
+SRAI
+LW
+JALR
+S-Type instructions:
+SW
+Special Ones: RS1, RS2,  No IMM field needed
+CMP_EQ
+CMP_LT
+CMP_GE
+CMP_LTU 
+CMP_GEU
+U-Type instructions:
+LUI
+AUIPC
+J-Type instructions:
+JAL 
+Y0-types (IMM16 based on SOPP): 
+NOP:   DNE: use addi x0, x0, 0  instead -> should be a name to the assembler
+BRANCH:   PC = PC + signext(SIMM16 * 4) + 4 : DNE: Worse version of JAL
+Funct7: 0000000
+CBRANCH_SCCZ :    if (SCC == 0) then PC = PC + signext(SIMM16 * 4) + 4; else nop. 
+Funct7: 0000001
+CBRANCH_SCCNZ:    if (SCC == 1) then PC = PC + signext(SIMM16 * 4) + 4; else nop. 
+Funct7: 0000010
+CBRANCH_VCCZ:    if (VCC ==  ‘0) then PC = PC + signext(SIMM16 * 4) + 4; else nop. 
+Funct7: 0000011
+CBRANCH_VCCNZ:    if (VCC  != ‘0) then PC = PC + signext(SIMM16 * 4) + 4; else nop. 
+Funct7: 0000100
+CBRANCH_EXECZ:    if (EXEC ==  ‘0) then PC = PC + signext(SIMM16 * 4) + 4; else nop. 
+Funct7: 0000101
+CBRANCH_EXECNZ:    if (EXEC != ‘0) then PC = PC + signext(SIMM16 * 4) + 4; else nop. 
+Funct7: 0000110
+BARRIER:   Sync waves within a workgroup (later)
+Funct7: 0000111
+WAIT_CNT
+Funct7: 0001000
+ENDPGM:   End of program; terminate wavefront (later)
+Funct7: 0001001
+Y1-types: (RD, IMM16 based on SOPK)
+CBRANCH_I_FORK
+CMOV
+Y2-types: (RS1, RD based on SOP1)
+CBRANCH_JOIN
+ABS
+
+
+Vector Instructions
+Maybes:
+V_CNDMASK
+V_MACQ
+V_MIN
+V_MAX
+V_NEG/NOT
+Immediates???
+v_lane_id (get thread ID)
+V_READLANE, WRITELANE
+Yes’s
+V_CMP_EQ
+V_CMP_LT
+V_CMP_GE
+V_CMP_LTU 
+V_CMP_GEU
+V_ADD
+V_SUB
+V_AND
+V_OR
+V_XOR
+V_ADD
+V_SUB
+V_MUL 
+V_MULQ
+V_MAC (mnemonic for two instructions) or
+V_MAD (mnemonic for two instructions) or
+V_FMA
+V_NOP (mnemonic likely)
+Shifting???
+Transcendentals???
+V_LW
+V_SW
+V_MOV
+
+Unique Instructions
+BUFFER_STORE_DWORD
+BUFFER_LOAD_DWORD
+Invalid Pipelining Combinations:
