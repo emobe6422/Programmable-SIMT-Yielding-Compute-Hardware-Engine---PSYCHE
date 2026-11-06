@@ -1,16 +1,17 @@
 `timescale 1ns /1ps
 
 /* Notes: 
- * - VCC implicitly written to, not explicitly
+ * - VCC explicitly and implicitly written to
  * - SCC, M0 and EXEC stay out, VCC stays in
+ * - revisit whether VCC should have an input/output component
  */
 
-module scalar_reg_file #(
+ module scalar_reg_file #(
     parameter REG_COUNT = 32 //# of scalar registers
     )
     (
     input logic clk,
-    input logic write_enable, //control signal
+    input logic reg_write, //control signal
     input logic [4:0] rs1, rs2, rd,
     input logic [31:0] data_in,
     /*we pass these values (data_out_1/2) as unsigned and modules downstream
@@ -45,7 +46,7 @@ module scalar_reg_file #(
         data_out_2 = decode_scalar_operand(rs2, scalar_registers, vcc);
     end
     always_ff @ (posedge clk) begin
-       if (write_enable) begin
+       if (reg_write) begin
             if (rd == 5'd0) begin
                 // x0 is hardwired to zero - writes are discarded
             end else if (rd inside {[5'd1:5'd30]}) begin
