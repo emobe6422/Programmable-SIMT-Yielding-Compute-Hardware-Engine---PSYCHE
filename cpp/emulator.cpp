@@ -3,6 +3,7 @@
 #include <vector>
 #include <iostream>
 #include <bitset>
+using namespace std;
 
 /*
  * Notes: 
@@ -13,12 +14,12 @@
  */
 
 struct WaveState {
-    uint32_t sgpr[32] = {0}; //x0 and x31 should be hardwired
-    uint32_t exec = 0xFFFFFFFF;
-    uint32_t PC = 0;
-    uint32_t scc = 0; //zero-extended so as to be {{31'b0}, scc}
+    uint32_t sgpr[32];//x0 and x31 should be hardwired
+    uint32_t exec;
+    uint32_t pc;
+    uint32_t scc; //zero-extended so as to be {{31'b0}, scc}
     //vgpr's
-    bool done = false;
+    bool done;
 };
 
 struct DecodeInstruction {
@@ -89,6 +90,16 @@ ImmediateGenerator immediate (uint32_t instr) {
     return imm;
 }
 
+WaveState wavestate () {
+    WaveState w{}; //zero-initializes everything (the array too)
+    w.exec = 0xFFFFFFFF;
+    w.pc = 0;
+    w.scc = 0; //zero-extended so as to be {{31'b0}, scc}
+    //vgpr's
+    w.done = false;
+    return w;
+}
+
 /* 
  * Input the register index (x0 -> x31) you want 
  * to read from and output the register's data (32'b0)
@@ -112,8 +123,13 @@ void scalar_reg_write(uint8_t idx, uint32_t data_in, uint32_t scalar_registers[3
     }
 }
 
+//step function. Should fetch, decode, execute one instruction
+
 
 
 int main() {
+    //0x00000013 is NOP (addi x0 x0 0) so that way nothing happens
+    vector<uint32_t> instruction_memory(1024, 0x00000013);
+
     return 0;
 };
