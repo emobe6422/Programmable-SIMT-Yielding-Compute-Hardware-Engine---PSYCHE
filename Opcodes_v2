@@ -6,7 +6,7 @@ XOR
 ADD
 SUB
 MUL (read up on how it affects Q16.16. Need to produce a 64 bit #)
-MULQ
+MULQ - Multiply two numbers in Q16.16, and isolate the middle 32 bits from the 64-bit generated number
 SLL
 SRL
 SRA
