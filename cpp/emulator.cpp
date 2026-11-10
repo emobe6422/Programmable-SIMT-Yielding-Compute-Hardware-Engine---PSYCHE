@@ -5,16 +5,25 @@
 #include <bitset>
 using namespace std;
 
-/*
- * Notes: 
- * - Make sure x0 and x31 are hardwired to 0 and VCC
- * - takes the binary input and outputs what we need
- * - VCC can be explicitly written to since it's a register duh
- * - x31 is also exclusively reserved for VCC. Nothing else should go there
- */
+#define  R_INSTRUCTION 0b0110011
+#define  I_INSTRUCTION 0b0010011 //except LW and JALR
+#define  S_INSTRUCTION 0b0100011
+#define  U_INSTRUCTION 0b0110111
+#define  J_INSTRUCTION 0b1101111
+//define Y0_OPCODE 0b
+//define Y1_OPCODE 0b
+//define Y2_OPCODE 0b
+
+/**
+* Notes: 
+* - Make sure x0 is hardwired to 0
+* - takes the binary input and outputs what we need
+* - VCC can be explicitly written to since it's a register duh
+* - x31 is also exclusively reserved for VCC. Nothing else should go there
+*/
 
 struct WaveState {
-    uint32_t sgpr[32];//x0 and x31 should be hardwired
+    uint32_t sgpr[32];//x0 and should be hardwired
     uint32_t exec;
     uint32_t pc;
     uint32_t scc; //zero-extended so as to be {{31'b0}, scc}
@@ -113,6 +122,7 @@ uint32_t scalar_reg_read(uint8_t idx, uint32_t scalar_registers[32]) {
     } else if (idx > 0 && idx <= 31) {
         return scalar_registers[idx]; //VCC included
     } 
+    return -1;
 }
 
 void scalar_reg_write(uint8_t idx, uint32_t data_in, uint32_t scalar_registers[32]) {
@@ -128,8 +138,69 @@ void scalar_reg_write(uint8_t idx, uint32_t data_in, uint32_t scalar_registers[3
 
 
 int main() {
+    //PC needed to index into memory
+
     //0x00000013 is NOP (addi x0 x0 0) so that way nothing happens
-    vector<uint32_t> instruction_memory(1024, 0x00000013);
+    //vector<uint32_t> instruction_memory(1024, 0x00000013);
+
+    //addi x1 x2 17
+    uint32_t test_instruction = 0x01110093;
+    WaveState w = wavestate();
+    ImmediateGenerator imm = immediate(test_instruction);
+    DecodeInstruction d = decode(test_instruction);
+    //opcode cases
+    switch (d.opcode) {
+        case R_INSTRUCTION :
+
+        break;
+
+        case I_INSTRUCTION :
+            //funct3 cases
+            switch (d.funct3) {
+                case 0b000 : //addi
+                    w.sgpr[d.rd] = imm.i_type + w.sgpr[d.rs1];
+                break;
+
+                case 0b010 : //slti
+                    w.sgpr[d.rd] = imm.i_type  w.sgpr[d.rs1];
+                break;
+
+                case 0b011 : //sltiu
+                    w.sgpr[d.rd] = imm.i_type  w.sgpr[d.rs1];
+                break;
+
+                case 0b100 : //xori
+                    w.sgpr[d.rd] = imm.i_type ^ w.sgpr[d.rs1];
+                break;
+
+                case 0b110 : //ori
+                    w.sgpr[d.rd] = imm.i_type | w.sgpr[d.rs1];
+                break;
+
+                case 0b111 : //andi
+                    w.sgpr[d.rd] = imm.i_type & w.sgpr[d.rs1];
+                break;
+
+                //return to slli, srli, srai
+            }
+        break;
+
+        case S_INSTRUCTION :
+        
+        break;
+
+        case U_INSTRUCTION :
+        
+        break;
+
+        case J_INSTRUCTION :
+        
+        break;
+    }
+
+    cout << "value in x1 = " << w.sgpr[1];
+
+
 
     return 0;
-};
+}
