@@ -20,6 +20,11 @@ using namespace std;
 * - takes the binary input and outputs what we need
 * - VCC can be explicitly written to since it's a register duh
 * - x31 is also exclusively reserved for VCC. Nothing else should go there
+* - fix  slli, srli, srai
+* - Use the scalar reg read and write methods
+* - What to do about i types for scalar_reg_r/w
+* - how to efficiently throw errors?
+* - Q16.16 for EVERYTHING???
 */
 
 struct WaveState {
@@ -109,28 +114,41 @@ WaveState wavestate () {
     return w;
 }
 
-/* 
- * Input the register index (x0 -> x31) you want 
- * to read from and output the register's data (32'b0)
- * Note: The 'register' keyword is off-limits. C++ stuff idk. 
- * Call 'register' idx instead.
- */
+/** 
+* Input the register index (x0 -> x31) you want 
+* to read from and output the register's data (32'b0)
+* Note: The 'register' keyword is off-limits. C++ stuff idk. 
+* Call 'register' idx instead.
+*/
 uint32_t scalar_reg_read(uint8_t idx, uint32_t scalar_registers[32]) {
     //register could be rs1 or rs2
     if (idx == 0) {
         return 0;
     } else if (idx > 0 && idx <= 31) {
         return scalar_registers[idx]; //VCC included
-    } 
-    return -1;
+    }
+    //throw an error
 }
 
+/**
+ * input the register you want to write data to
+ */
 void scalar_reg_write(uint8_t idx, uint32_t data_in, uint32_t scalar_registers[32]) {
     if (idx == 0) {
         scalar_registers[0] = 0;
     } else if (idx > 0 && idx <= 31) {
         scalar_registers[idx] = data_in;
     }
+    //throw an error
+}
+
+
+/**
+ * Dump the contents of the register file and
+ * any other valuable info.
+ */
+void dump() {
+
 }
 
 //step function. Should fetch, decode, execute one instruction
@@ -139,19 +157,62 @@ void scalar_reg_write(uint8_t idx, uint32_t data_in, uint32_t scalar_registers[3
 
 int main() {
     //PC needed to index into memory
-
+    uint32_t data_temp;
     //0x00000013 is NOP (addi x0 x0 0) so that way nothing happens
-    //vector<uint32_t> instruction_memory(1024, 0x00000013);
+    vector<uint32_t> instruction_memory(1024, 0x00000013);
 
-    //addi x1 x2 17
-    uint32_t test_instruction = 0x01110093;
     WaveState w = wavestate();
-    ImmediateGenerator imm = immediate(test_instruction);
-    DecodeInstruction d = decode(test_instruction);
+    ImmediateGenerator imm = immediate(instruction_memory[0]);
+    DecodeInstruction d = decode(instruction_memory[0]);
     //opcode cases
     switch (d.opcode) {
         case R_INSTRUCTION :
+            switch (d.funct3) {
+                case 0b000 : //add/sub
+                    switch (d.funct7) {
+                        case 0b0000000 : //add
+                            data_temp =  w.sgpr[d.rs1] + w.sgpr[d.rs2];
+                            scalar_reg_write(d.rd, data_temp, w.sgpr);
+                        break;
 
+                        case 0b0100000 : //sub
+                            data_temp =  w.sgpr[d.rs1] - w.sgpr[d.rs2];
+                            scalar_reg_write(d.rd, data_temp, w.sgpr);
+                        break;
+                    }
+                break;
+                case 0b001 : //sll
+                
+                break;
+
+                case 0b010 : //mul
+                    data_temp =  w.sgpr[d.rs1] * w.sgpr[d.rs2];
+                    scalar_reg_write(d.rd, data_temp, w.sgpr);
+                break;
+
+                case 0b011 : //mulq
+
+                break;
+
+                case 0b100 : //xor
+                    data_temp =  w.sgpr[d.rs1] ^ w.sgpr[d.rs2];
+                    scalar_reg_write(d.rd, data_temp, w.sgpr);
+                break;
+
+                case 0b101 : //srl/sra
+
+                break;
+
+                case 0b110 : //or
+                    data_temp =  w.sgpr[d.rs1] | w.sgpr[d.rs2];
+                    scalar_reg_write(d.rd, data_temp, w.sgpr);
+                break;
+
+                case 0b111 : //and
+                    data_temp =  w.sgpr[d.rs1] & w.sgpr[d.rs2];
+                    scalar_reg_write(d.rd, data_temp, w.sgpr);
+                break;
+            }
         break;
 
         case I_INSTRUCTION :
@@ -161,12 +222,8 @@ int main() {
                     w.sgpr[d.rd] = imm.i_type + w.sgpr[d.rs1];
                 break;
 
-                case 0b010 : //slti
-                    w.sgpr[d.rd] = imm.i_type  w.sgpr[d.rs1];
-                break;
-
-                case 0b011 : //sltiu
-                    w.sgpr[d.rd] = imm.i_type  w.sgpr[d.rs1];
+                case 0b010 : //muli
+                    w.sgpr[d.rd] = imm.i_type * w.sgpr[d.rs1];
                 break;
 
                 case 0b100 : //xori
@@ -181,7 +238,22 @@ int main() {
                     w.sgpr[d.rd] = imm.i_type & w.sgpr[d.rs1];
                 break;
 
-                //return to slli, srli, srai
+                
+                case 0b001 : //slli
+                    //w.sgpr[d.rd] = imm.i_type << w.sgpr[d.rs1];
+                break;
+
+                case 0b101 : //srli, srai
+                    switch (d.funct7)
+                        case 0b0000000 : //srli
+                             //w.sgpr[d.rd] = imm.i_type >> w.sgpr[d.rs1];
+                        break;
+
+                        case 0b0100000 : //srai
+                            //w.sgpr[d.rd] = imm.i_type  w.sgpr[d.rs1];
+                        break;
+                    
+                break;
             }
         break;
 
@@ -198,8 +270,7 @@ int main() {
         break;
     }
 
-    cout << "value in x1 = " << w.sgpr[1];
-
+    cout << "value in x1 = " << w.sgpr[0];
 
 
     return 0;
