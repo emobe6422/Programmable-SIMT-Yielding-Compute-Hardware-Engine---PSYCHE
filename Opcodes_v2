@@ -1,24 +1,26 @@
-Scalar Instructions
+ Scalar Instructions
 R-Type instructions:
-AND
-OR
-XOR
 ADD
 SUB
-MUL (read up on how it affects Q16.16. Need to produce a 64 bit #)
-MULQ - Multiply two numbers in Q16.16, and isolate the middle 32 bits from the 64-bit generated number
 SLL
+MUL (read up on how it affects Q16.16. Need to produce a 64 bit #)
+MULQ
+XOR
 SRL
 SRA
+OR
+AND
 I-Type instructions:
-ANDI
-ORI
-XORI
 ADDI
 MULI  (read up on how it affects Q16.16. Need to produce a 64 bit #).
+XORI
+ORI
+ANDI
+MULQI DNE
 SLLI
 SRLI
 SRAI
+Different Opcode, same type:
 LW
 JALR
 S-Type instructions:
@@ -62,8 +64,6 @@ CMOV
 Y2-types: (RS1, RD based on SOP1)
 CBRANCH_JOIN
 ABS
-
-
 Vector Instructions
 Maybes:
 V_CNDMASK
@@ -72,7 +72,7 @@ V_MIN
 V_MAX
 V_NEG/NOT
 Immediates???
-v_lane_id (get thread ID)
+V_LANE_ID(get thread ID)
 V_READLANE, WRITELANE
 Yes’s
 V_CMP_EQ
@@ -103,3 +103,7 @@ Unique Instructions
 BUFFER_STORE_DWORD
 BUFFER_LOAD_DWORD
 Invalid Pipelining Combinations:
+
+Godbolt:
+https://godbolt.org/
+-x cl -cl-std=CL2.0 --target=amdgcn-amd-amdhsa -mcpu=tahiti -O2 -nogpulib
