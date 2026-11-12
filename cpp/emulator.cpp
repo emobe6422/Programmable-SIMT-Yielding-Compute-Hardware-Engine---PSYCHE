@@ -182,7 +182,7 @@ int main() {
                     }
                 break;
                 case 0b001 : //sll
-                
+
                 break;
 
                 case 0b010 : //mul
@@ -219,23 +219,28 @@ int main() {
             //funct3 cases
             switch (d.funct3) {
                 case 0b000 : //addi
-                    w.sgpr[d.rd] = imm.i_type + w.sgpr[d.rs1];
+                    data_temp = imm.i_type + w.sgpr[d.rs1];
+                    scalar_reg_write(d.rd, data_temp, w.sgpr);
                 break;
 
                 case 0b010 : //muli
-                    w.sgpr[d.rd] = imm.i_type * w.sgpr[d.rs1];
+                    data_temp = imm.i_type * w.sgpr[d.rs1];
+                    scalar_reg_write(d.rd, data_temp, w.sgpr);
                 break;
 
                 case 0b100 : //xori
-                    w.sgpr[d.rd] = imm.i_type ^ w.sgpr[d.rs1];
+                    data_temp = imm.i_type ^ w.sgpr[d.rs1];
+                    scalar_reg_write(d.rd, data_temp, w.sgpr);
                 break;
 
                 case 0b110 : //ori
-                    w.sgpr[d.rd] = imm.i_type | w.sgpr[d.rs1];
+                    data_temp = imm.i_type | w.sgpr[d.rs1];
+                    scalar_reg_write(d.rd, data_temp, w.sgpr);
                 break;
 
                 case 0b111 : //andi
-                    w.sgpr[d.rd] = imm.i_type & w.sgpr[d.rs1];
+                    data_temp = imm.i_type & w.sgpr[d.rs1];
+                    scalar_reg_write(d.rd, data_temp, w.sgpr);
                 break;
 
                 
@@ -253,7 +258,7 @@ int main() {
                             //w.sgpr[d.rd] = imm.i_type  w.sgpr[d.rs1];
                         break;
                     
-                break;
+                
             }
         break;
 
