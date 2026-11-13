@@ -13,6 +13,8 @@ using namespace std;
 //define Y0_OPCODE 0b
 //define Y1_OPCODE 0b
 //define Y2_OPCODE 0b
+#define REG_SIZE 32
+#define MEMORY_DEPTH 64
 
 /**
 * Notes: 
@@ -29,7 +31,7 @@ using namespace std;
 */
 
 struct WaveState {
-    uint32_t sgpr[32];//x0 and should be hardwired
+    uint32_t sgpr[REG_SIZE];//x0 and should be hardwired
     uint32_t exec;
     uint32_t pc;
     uint32_t scc; //zero-extended so as to be {{31'b0}, scc}
@@ -125,7 +127,7 @@ uint32_t scalar_reg_read(uint8_t idx, uint32_t scalar_registers[32]) {
     //register could be rs1 or rs2
     if (idx == 0) {
         return 0;
-    } else if (idx > 0 && idx <= 31) {
+    } else if (idx > 0 && idx <= REG_SIZE-1) {
         return scalar_registers[idx]; //VCC included
     }
     //throw an error
@@ -137,7 +139,7 @@ uint32_t scalar_reg_read(uint8_t idx, uint32_t scalar_registers[32]) {
 void scalar_reg_write(uint8_t idx, uint32_t data_in, uint32_t scalar_registers[32]) {
     if (idx == 0) {
         scalar_registers[0] = 0;
-    } else if (idx > 0 && idx <= 31) {
+    } else if (idx > 0 && idx <= REG_SIZE-1) {
         scalar_registers[idx] = data_in;
     }
     //throw an error
@@ -145,13 +147,28 @@ void scalar_reg_write(uint8_t idx, uint32_t data_in, uint32_t scalar_registers[3
 
 
 /**
- * Dump the contents of the register file and
- * any other valuable info. Only dump values that are changed
+ * 
+ * Dump the contents of the register to examine states. For 
+ * dump type "intermediate", only dump the values (???) that change.
+ * For dump type "final", just show everything.
  * 
  * PC, instr, registers, SCC, VCC
+ * 
  */
-void dump() {
+void dump(string dump_type, uint32_t PC, uint32_t SCC, uint32_t VCC, uint32_t instr, uint32_t scalar_registers[32]  ) {
+    if (dump_type == "intermediate") {
 
+    } else if (dump_type == "final") {
+        for (int i = 0; i < REG_SIZE; i++) {
+            cout << " x" << i << ": " << scalar_registers[i];
+            if (i % 8 == 0) {
+                cout << "\n";
+            }
+        }
+        //last instruction needed?
+        cout << "\nPC: " << PC << ", SCC: " << SCC << ", VCC: " << bitset<32>(VCC) << endl;
+
+    }
 }
 
 //step function. Should fetch, decode, execute one instruction
@@ -161,7 +178,7 @@ void dump() {
 void evaluate_instruction(uint32_t opcode, uint8_t f3, uint8_t f7,
                           uint8_t r1, uint8_t r2, uint8_t d /*rd*/,
                           int32_t imm /*sign extended I-type immediate*/,
-                          uint32_t scalar_registers[32]) {
+                          uint32_t scalar_registers[REG_SIZE]) {
     uint32_t data_temp;
     uint32_t a = scalar_registers[r1];
     uint32_t b = scalar_registers[r2];
@@ -287,21 +304,35 @@ void evaluate_instruction(uint32_t opcode, uint8_t f3, uint8_t f7,
 
 int main() {
     //PC needed to index into memory
-    //0x00000013 is NOP (addi x0 x0 0) so that way nothing happens
-    uint32_t memory_depth = 64;
-    vector<uint32_t> instruction_memory(memory_depth, 0x00000013);
+    //0x00000013 is NOP (addi x0 x0 0) so that way nothing happens;
+
+    uint32_t test_instruction = 0x01018093;
+
+    vector<uint32_t> instruction_memory(MEMORY_DEPTH, 0x00000013);
     WaveState w = wavestate();
 
     uint32_t pc_idx = w.pc/4; //pc was initialized to 0 before
 
+
+
+
+    ImmediateGenerator imm = immediate(test_instruction);
+    DecodeInstruction d = decode(test_instruction);
+    evaluate_instruction(d.opcode, d.funct3, d.funct7, d.rs1, d.rs2, d.rd, imm.i_type, w.sgpr);
+    //PC, SCC, VCC value of 216, 64, 400 is bs
+    dump("final", 216, 64, 400, test_instruction, w.sgpr);
+
+
+
+
     //
-    while (pc_idx != memory_depth) {
+    /*while (pc_idx != MEMORY_DEPTH) {
         ImmediateGenerator imm = immediate(instruction_memory[pc_idx]);
         DecodeInstruction d = decode(instruction_memory[pc_idx]);
         evaluate_instruction(d.opcode, d.funct3, d.funct7, d.rs1, d.rs2, d.rd, imm.i_type, w.sgpr);
         //print the states stuff
         w.pc += 4;
-    }
+    }*/
     //print the final wavestate out at the end.
 
     return 0;
