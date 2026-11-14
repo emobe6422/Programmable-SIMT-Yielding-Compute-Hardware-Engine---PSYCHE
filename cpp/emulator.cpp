@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <vector>
 #include <iostream>
+#include <algorithm>
 #include <bitset>
 using namespace std;
 
@@ -145,32 +146,6 @@ void scalar_reg_write(uint8_t idx, uint32_t data_in, uint32_t scalar_registers[3
     //throw an error
 }
 
-
-/**
- * 
- * Dump the contents of the register to examine states. For 
- * dump type "intermediate", only dump the values (???) that change.
- * For dump type "final", just show everything.
- * 
- * PC, instr, registers, SCC, VCC
- * 
- */
-void dump(string dump_type, uint32_t PC, uint32_t SCC, uint32_t VCC, uint32_t instr, uint32_t scalar_registers[32]  ) {
-    if (dump_type == "intermediate") {
-
-    } else if (dump_type == "final") {
-        for (int i = 0; i < REG_SIZE; i++) {
-            cout << " x" << i << ": " << scalar_registers[i];
-            if (i % 8 == 0) {
-                cout << "\n";
-            }
-        }
-        //last instruction needed?
-        cout << "\nPC: " << PC << ", SCC: " << SCC << ", VCC: " << bitset<32>(VCC) << endl;
-
-    }
-}
-
 //step function. Should fetch, decode, execute one instruction
 
 
@@ -300,30 +275,61 @@ void evaluate_instruction(uint32_t opcode, uint8_t f3, uint8_t f7,
     }
 }
 
+/**
+ * Dump the contents of the register to examine states. For 
+ * dump type "intermediate", dump ONLY the register values that
+ * change and show the rest of the values normally.
+ * For dump type "final", just show everything (all registers).
+ * 
+ * Creates a copy of scalar_registers and uses a for loop for initializing.
+ * Compare the "temp" copy to the updated version. If any reg vlaues change,
+ * only post those ones. Not concerned with what doesnt change.
+ * 
+ * Apparently C++ treats array parameters like pointers. Never knew!
+ * 
+ * PC, instr, registers, SCC, VCC
+ * 
+ */
+void dump(string dump_type, uint32_t PC, uint32_t SCC, uint32_t VCC, uint32_t instr, uint32_t temporary[REG_SIZE], uint32_t scalar_registers[REG_SIZE]  ) {
+    if (dump_type == "intermediate") {
+        for (int i = 0; i < REG_SIZE; i++) {
+            if (temporary[i] != scalar_registers[i]) {
+                //print out what changed
+                cout << "x" << i << ": " << scalar_registers[i];
+            }
+            //temporary should be one update behind scalar_registers
+            temporary[i] = scalar_registers[i];
+        }
+    } else if (dump_type == "final") {
+        for (int i = 0; i < REG_SIZE; i++) {
+            cout << " x" << i << ": " << scalar_registers[i];
+            if (i % 8 == 0 && i != 0) {
+                cout << "\n";
+            }
+        }
+        //should i print the last instruction too?
+        cout << "\nPC: " << PC << ", SCC: " << SCC << ", VCC: " << bitset<32>(VCC) << endl;
+    }
+}
+
 
 
 int main() {
-    //PC needed to index into memory
     //0x00000013 is NOP (addi x0 x0 0) so that way nothing happens;
-
-    uint32_t test_instruction = 0x01018093;
-
     vector<uint32_t> instruction_memory(MEMORY_DEPTH, 0x00000013);
+
+    
+    uint32_t test_instruction = 0x00000013;
+
     WaveState w = wavestate();
-
     uint32_t pc_idx = w.pc/4; //pc was initialized to 0 before
-
-
-
 
     ImmediateGenerator imm = immediate(test_instruction);
     DecodeInstruction d = decode(test_instruction);
-    evaluate_instruction(d.opcode, d.funct3, d.funct7, d.rs1, d.rs2, d.rd, imm.i_type, w.sgpr);
+    evaluate_instruction(d.opcode, d.funct3, d.funct7, d.rs1, d.rs2, d.rd, imm.i_type, w.sgpr); 
+    uint32_t temp[REG_SIZE] = {}; //designed to be a copy of the sgpr's that is one cycle behind. For checking new reg values only
     //PC, SCC, VCC value of 216, 64, 400 is bs
-    dump("final", 216, 64, 400, test_instruction, w.sgpr);
-
-
-
+    dump("intermediate", 216, 64, 400, test_instruction, temp, w.sgpr);
 
     //
     /*while (pc_idx != MEMORY_DEPTH) {
