@@ -29,6 +29,7 @@ using namespace std;
 * - how to efficiently throw errors?
 * - Q16.16 for EVERYTHING???
 * - Double check the last instruction for the while loop that its executed
+* - Lots of edge cases to exhaust :(
 */
 
 struct WaveState {
@@ -51,11 +52,11 @@ struct DecodeInstruction {
     uint8_t rs2;    //5 bits
     //immediate?
 };
-
+/**
+ * takes in instruction, outputs the corresponding immediate
+ * and also a flag for what instruction type it was.
+ */
 struct ImmediateGenerator {
-    /* takes in instruction, outputs the corresponding immediate
-     * and also a flag for what instruction type it was.
-     */
     uint32_t instruction;
     int32_t r_type; //?? be careful about testing this one
     int32_t i_type;
@@ -67,9 +68,6 @@ struct ImmediateGenerator {
     int32_t y2_type;
     //some sort of flag to indicate the type chosen
 };
-
-
-//Type wavestate here
 
 DecodeInstruction decode (uint32_t instr) {
     DecodeInstruction d{};
@@ -85,7 +83,7 @@ DecodeInstruction decode (uint32_t instr) {
 
 //return type immediate_generator
 ImmediateGenerator immediate (uint32_t instr) {
-    ImmediateGenerator imm{}; //initializes all values to zero with the {}
+    ImmediateGenerator imm = {}; //initializes all values to zero with the {}
     imm.instruction = instr;
     imm.r_type = 0; //no immediates for r type
 
@@ -109,7 +107,7 @@ ImmediateGenerator immediate (uint32_t instr) {
 }
 
 WaveState wavestate () {
-    WaveState w{}; //zero-initializes everything (the array too)
+    WaveState w = {}; //zero-initializes everything (the array too)
     w.exec = 0xFFFFFFFF;
     w.pc = 0;
     w.scc = 0; //zero-extended so as to be {{31'b0}, scc}
@@ -277,29 +275,18 @@ void evaluate_instruction(uint32_t opcode, uint8_t f3, uint8_t f7,
 
 /**
  * Dump the contents of the register to examine states. For 
- * dump type "intermediate", dump ONLY the register values that
- * change and show the rest of the values normally.
- * For dump type "final", just show everything (all registers).
- * 
- * Creates a copy of scalar_registers and uses a for loop for initializing.
- * Compare the "temp" copy to the updated version. If any reg vlaues change,
- * only post those ones. Not concerned with what doesnt change.
+ * dump type "intermediate", dump the instruction, rd, rd_data, 
+ * VCC, SCC,
  * 
  * Apparently C++ treats array parameters like pointers. Never knew!
  * 
  * PC, instr, registers, SCC, VCC
- * 
  */
-void dump(string dump_type, uint32_t PC, uint32_t SCC, uint32_t VCC, uint32_t instr, uint32_t temporary[REG_SIZE], uint32_t scalar_registers[REG_SIZE]  ) {
+
+void dump(string dump_type, uint32_t instr, uint32_t PC, uint8_t rd, uint32_t SCC, uint32_t VCC,  uint32_t scalar_registers[REG_SIZE]  ) {
     if (dump_type == "intermediate") {
-        for (int i = 0; i < REG_SIZE; i++) {
-            if (temporary[i] != scalar_registers[i]) {
-                //print out what changed
-                cout << "x" << i << ": " << scalar_registers[i];
-            }
-            //temporary should be one update behind scalar_registers
-            temporary[i] = scalar_registers[i];
-        }
+        //consider the data for rd in the case where something is stored and something isnt (jal)
+        printf("instruction: 0x%08X, PC: %d, rd: x%d, data in: %d, SCC: %d, VCC: %d\n", instr, PC, rd, scalar_registers[rd], SCC, VCC);
     } else if (dump_type == "final") {
         for (int i = 0; i < REG_SIZE; i++) {
             cout << " x" << i << ": " << scalar_registers[i];
@@ -307,38 +294,28 @@ void dump(string dump_type, uint32_t PC, uint32_t SCC, uint32_t VCC, uint32_t in
                 cout << "\n";
             }
         }
-        //should i print the last instruction too?
-        cout << "\nPC: " << PC << ", SCC: " << SCC << ", VCC: " << bitset<32>(VCC) << endl;
     }
 }
 
 
-
 int main() {
     //0x00000013 is NOP (addi x0 x0 0) so that way nothing happens;
-    vector<uint32_t> instruction_memory(MEMORY_DEPTH, 0x00000013);
+    //vector<uint32_t> instruction_memory(MEMORY_DEPTH, 0x00000013);
 
-    
-    uint32_t test_instruction = 0x00000013;
-
+    //addi x1, x0, 5, 
+    //addi x2, x0, -3, 
+    //sub x3, x1, x2
+    vector<uint32_t> instruction_memory = {0x00500093, 0xFFD00113, 0x402081B3};
     WaveState w = wavestate();
-    uint32_t pc_idx = w.pc/4; //pc was initialized to 0 before
-
-    ImmediateGenerator imm = immediate(test_instruction);
-    DecodeInstruction d = decode(test_instruction);
-    evaluate_instruction(d.opcode, d.funct3, d.funct7, d.rs1, d.rs2, d.rd, imm.i_type, w.sgpr); 
-    uint32_t temp[REG_SIZE] = {}; //designed to be a copy of the sgpr's that is one cycle behind. For checking new reg values only
-    //PC, SCC, VCC value of 216, 64, 400 is bs
-    dump("intermediate", 216, 64, 400, test_instruction, temp, w.sgpr);
-
-    //
-    /*while (pc_idx != MEMORY_DEPTH) {
+    uint32_t pc_idx;
+    while (pc_idx != 3) {
         ImmediateGenerator imm = immediate(instruction_memory[pc_idx]);
         DecodeInstruction d = decode(instruction_memory[pc_idx]);
         evaluate_instruction(d.opcode, d.funct3, d.funct7, d.rs1, d.rs2, d.rd, imm.i_type, w.sgpr);
-        //print the states stuff
+        dump("intermediate", instruction_memory[pc_idx], w.pc, d.rd, 600, 600, w.sgpr);
         w.pc += 4;
-    }*/
+        pc_idx = w.pc/4;
+    }
     //print the final wavestate out at the end.
 
     return 0;
