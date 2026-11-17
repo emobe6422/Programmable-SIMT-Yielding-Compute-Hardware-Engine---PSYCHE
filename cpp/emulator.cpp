@@ -6,14 +6,20 @@
 #include <bitset>
 using namespace std;
 
-#define  R_INSTRUCTION 0b0110011
-#define  I_INSTRUCTION 0b0010011 //except LW and JALR
-#define  S_INSTRUCTION 0b0100011
-#define  U_INSTRUCTION 0b0110111
-#define  J_INSTRUCTION 0b1101111
-//define Y0_OPCODE 0b
-//define Y1_OPCODE 0b
-//define Y2_OPCODE 0b
+//basics
+#define ARITHMETIC_INSTRUCTION 0b0110011
+#define IMMEDIATE_INSTRUCTION  0b0010011
+#define LOAD_INSTRUCTION       0b0000011
+#define STORE_INSTRUCTION      0b0100011
+//additions
+#define JAL_INSTRUCTION        0b1101111
+#define JALR_INSTRUCTION       0b1100111
+#define LUI_INSTRUCTION        0b0110111
+#define AUIPC_INSTRUCTION      0b0010111
+//new ones >:D
+//define Y0_OPCODE             0b
+//define Y1_OPCODE             0b
+//define Y2_OPCODE             0b
 #define REG_SIZE 32
 #define MEMORY_DEPTH 64
 
@@ -40,6 +46,11 @@ struct WaveState {
     //vgpr's
     //bool done;
 };
+
+/**
+ * data memory - stores [MEMORY_DEPTH] values
+ */
+vector<uint32_t> data_memory(MEMORY_DEPTH, 0);
 
 struct DecodeInstruction {
     uint32_t instruction;
@@ -87,7 +98,7 @@ ImmediateGenerator immediate (uint32_t instr) {
     imm.instruction = instr;
     imm.r_type = 0; //no immediates for r type
 
-    //i type - bits 31-20
+    //i type - bits 31-20, lw as well
     imm.i_type = ((int32_t)instr) >> 20;
 
     //s type
@@ -157,7 +168,7 @@ void evaluate_instruction(uint32_t opcode, uint8_t f3, uint8_t f7,
     uint32_t b = scalar_registers[r2];
 
     switch (opcode) {
-        case R_INSTRUCTION:
+        case ARITHMETIC_INSTRUCTION:
             switch (f3) {
                 case 0b000: //add/sub
                     switch (f7) {
@@ -215,7 +226,7 @@ void evaluate_instruction(uint32_t opcode, uint8_t f3, uint8_t f7,
             }
             break;
 
-        case I_INSTRUCTION:
+        case IMMEDIATE_INSTRUCTION: //the added uint32_t typecasting is for explicitness.
             switch (f3) {
                 case 0b000: //addi
                     data_temp = a + (uint32_t)imm;
@@ -261,28 +272,40 @@ void evaluate_instruction(uint32_t opcode, uint8_t f3, uint8_t f7,
                     break;
             }
             break;
+        case LOAD_INSTRUCTION: //lw rd imm[11:0][rs1]
 
-        case S_INSTRUCTION:
+            //fetch the value at rs1 + imm[11:0] in data meomory, then write it to rd
+            
+            scalar_reg_write(d, data_memory[r1 + imm], scalar_registers);
             break;
 
-        case U_INSTRUCTION:
+        case STORE_INSTRUCTION:
+        
             break;
+        case JAL_INSTRUCTION:
 
-        case J_INSTRUCTION:
+            break;
+        case JALR_INSTRUCTION:
+
+            break;
+        case LUI_INSTRUCTION:
+
+            break;
+        case AUIPC_INSTRUCTION:
+
             break;
     }
 }
 
 /**
  * Dump the contents of the register to examine states. For 
- * dump type "intermediate", dump the instruction, rd, rd_data, 
- * VCC, SCC,
+ * dump type "intermediate", dump the instruction, PC, rd, rd_data, 
+ * SCC, VCC
+ * 
+ * "Final" : dump all the contents of the reg file.
  * 
  * Apparently C++ treats array parameters like pointers. Never knew!
- * 
- * PC, instr, registers, SCC, VCC
  */
-
 void dump(string dump_type, uint32_t instr, uint32_t PC, uint8_t rd, uint32_t SCC, uint32_t VCC,  uint32_t scalar_registers[REG_SIZE]  ) {
     if (dump_type == "intermediate") {
         //consider the data for rd in the case where something is stored and something isnt (jal)
@@ -301,14 +324,20 @@ void dump(string dump_type, uint32_t instr, uint32_t PC, uint8_t rd, uint32_t SC
 int main() {
     //0x00000013 is NOP (addi x0 x0 0) so that way nothing happens;
     //vector<uint32_t> instruction_memory(MEMORY_DEPTH, 0x00000013);
-
     //addi x1, x0, 5, 
     //addi x2, x0, -3, 
     //sub x3, x1, x2
     vector<uint32_t> instruction_memory = {0x00500093, 0xFFD00113, 0x402081B3};
+
+    
     WaveState w = wavestate();
     uint32_t pc_idx;
-    while (pc_idx != 3) {
+
+
+
+
+
+    while (pc_idx != instruction_memory.size()) {
         ImmediateGenerator imm = immediate(instruction_memory[pc_idx]);
         DecodeInstruction d = decode(instruction_memory[pc_idx]);
         evaluate_instruction(d.opcode, d.funct3, d.funct7, d.rs1, d.rs2, d.rd, imm.i_type, w.sgpr);
