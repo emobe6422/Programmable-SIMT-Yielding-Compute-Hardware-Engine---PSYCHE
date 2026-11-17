@@ -1,4 +1,4 @@
-No AI used for RTL generation. Claude used a small bit (<15%) for the emulator and a lot (>50%) for the assembler. I wasnt really interested in the assembler besides the new instructions.
+No AI used for RTL generation. Claude used a small bit (<15%) for the emulator and a lot (>50%) for the assembler. I wasnt really interested in the assembler besides the new instructions (which I haven't even gotten to yet).
 
 UVM, Assembler and Emulator are being made in parallel currently.
 
