@@ -17,9 +17,10 @@ using namespace std;
 #define LUI_INSTRUCTION        0b0110111
 #define AUIPC_INSTRUCTION      0b0010111
 //new ones >:D
-//define Y0_OPCODE             0b
-//define Y1_OPCODE             0b
-//define Y2_OPCODE             0b
+#define Y0_INSTRUCTION         0b1111111
+#define Y1_INSTRUCTION         0b1111110
+#define Y2_INSTRUCTION         0b1111100
+#define Y3_INSTRUCTION         0b1111000
 #define REG_SIZE 32
 #define MEMORY_DEPTH 64
 
@@ -39,7 +40,7 @@ using namespace std;
 */
 
 struct WaveState {
-    uint32_t sgpr[REG_SIZE];//x0 and should be hardwired
+    uint32_t sgpr[REG_SIZE];//x0 should be hardwired
     uint32_t exec;
     uint32_t pc;
     uint32_t scc; //zero-extended so as to be {{31'b0}, scc}
@@ -50,7 +51,7 @@ struct WaveState {
 /**
  * data memory - stores [MEMORY_DEPTH] values
  */
-vector<uint32_t> data_memory(MEMORY_DEPTH, 0);
+uint32_t data_memory[MEMORY_DEPTH] = {};
 
 struct DecodeInstruction {
     uint32_t instruction;
@@ -77,7 +78,7 @@ struct ImmediateGenerator {
     int32_t y0_type;
     int32_t y1_type;
     int32_t y2_type;
-    //some sort of flag to indicate the type chosen
+    int32_t y3_type;
 };
 
 DecodeInstruction decode (uint32_t instr) {
@@ -96,24 +97,37 @@ DecodeInstruction decode (uint32_t instr) {
 ImmediateGenerator immediate (uint32_t instr) {
     ImmediateGenerator imm = {}; //initializes all values to zero with the {}
     imm.instruction = instr;
-    imm.r_type = 0; //no immediates for r type
+
+    //no immediates for r type
+    imm.r_type = 0; 
 
     //i type - bits 31-20, lw as well
     imm.i_type = ((int32_t)instr) >> 20;
 
     //s type
+    int32_t bitfield_1 = ((int32_t)(instr & 0xFE000000)) >> 20; //casting was needed for 2s comp
+    int32_t bitfield_2 = (instr >> 7) & 0x1F; //the rest of the zeros are inferred
+    imm.s_type = bitfield_1 | bitfield_2;
 
     //u type
+    imm.u_type = (int32_t)(instr & 0xFFFFF000);
 
     //j type
+    int32_t  imm20    = ((int32_t)(instr & 0x80000000)) >> 11;  
+    uint32_t imm10_1  = (instr >> 20) & 0x7FE;                  
+    uint32_t imm11    = (instr >> 9)  & 0x800;                 
+    uint32_t imm19_12 =  instr        & 0xFF000;                
+    imm.j_type = imm20 | imm10_1 | imm11 | imm19_12;
 
     //y0 type
-    imm.y0_type = (int32_t)(int16_t)((instr >> 7) & 0xFFFF); //yeah idek 
-
+    imm.y0_type = 0; //no immediates for y0 type
     //y1 type
+    imm.y1_type = (int32_t)(int16_t)((instr >> 7) & 0xFFFF); //yeah idek 
 
     //y2 type
 
+    //y3 type
+    imm.y3_type = 0;
     return imm;
 }
 
@@ -133,7 +147,7 @@ WaveState wavestate () {
 * Note: The 'register' keyword is off-limits. C++ stuff idk. 
 * Call 'register' idx instead.
 */
-uint32_t scalar_reg_read(uint8_t idx, uint32_t scalar_registers[32]) {
+uint32_t scalar_reg_read(uint8_t idx, uint32_t scalar_registers[REG_SIZE]) {
     //register could be rs1 or rs2
     if (idx == 0) {
         return 0;
@@ -146,7 +160,7 @@ uint32_t scalar_reg_read(uint8_t idx, uint32_t scalar_registers[32]) {
 /**
  * input the register you want to write data to
  */
-void scalar_reg_write(uint8_t idx, uint32_t data_in, uint32_t scalar_registers[32]) {
+void scalar_reg_write(uint8_t idx, uint32_t data_in, uint32_t scalar_registers[REG_SIZE]) {
     if (idx == 0) {
         scalar_registers[0] = 0;
     } else if (idx > 0 && idx <= REG_SIZE-1) {
@@ -155,14 +169,56 @@ void scalar_reg_write(uint8_t idx, uint32_t data_in, uint32_t scalar_registers[3
     //throw an error
 }
 
-//step function. Should fetch, decode, execute one instruction
-
+/**
+ * Chooses which immediate to select based on the instruction type. basically just a mux.
+ */
+int32_t choose_immediate (uint32_t instruction_type, int32_t r, int32_t i , int32_t s, int32_t u, 
+                          int32_t j, int32_t y0, int32_t y1, int32_t y2, int32_t y3) {
+    switch (instruction_type) {
+        case ARITHMETIC_INSTRUCTION :
+            return r;
+        
+        case IMMEDIATE_INSTRUCTION :
+            return i;
+       
+        case LOAD_INSTRUCTION :
+            return i;
+     
+        case STORE_INSTRUCTION :
+            return s;
+    
+        case JAL_INSTRUCTION :
+            return j;
+  
+        case JALR_INSTRUCTION :
+            return i;
+  
+        case LUI_INSTRUCTION :
+            return u;
+    
+        case AUIPC_INSTRUCTION :
+            return u;
+    
+        case Y0_INSTRUCTION :
+            return y0;
+    
+        case Y1_INSTRUCTION :
+            return y1;
+    
+        case Y2_INSTRUCTION :
+            return y2;
+    
+        case Y3_INSTRUCTION :
+            return y3;
+    }
+    //throw an error
+}
 
 
 void evaluate_instruction(uint32_t opcode, uint8_t f3, uint8_t f7,
                           uint8_t r1, uint8_t r2, uint8_t d /*rd*/,
                           int32_t imm /*sign extended I-type immediate*/,
-                          uint32_t scalar_registers[REG_SIZE]) {
+                          uint32_t scalar_registers[REG_SIZE], uint32_t scc) {
     uint32_t data_temp;
     uint32_t a = scalar_registers[r1];
     uint32_t b = scalar_registers[r2];
@@ -279,20 +335,53 @@ void evaluate_instruction(uint32_t opcode, uint8_t f3, uint8_t f7,
             scalar_reg_write(d, data_memory[r1 + imm], scalar_registers);
             break;
 
-        case STORE_INSTRUCTION:
-        
+        case STORE_INSTRUCTION: //sw rs2 rs1(imm), where rs1 + imm is address in data mem
+            //sw
+            data_temp = (uint32_t)imm + a;
+            data_memory[data_temp] = b;
             break;
         case JAL_INSTRUCTION:
 
             break;
         case JALR_INSTRUCTION:
-
+            //JALR
             break;
         case LUI_INSTRUCTION:
-
+            //LUI
             break;
         case AUIPC_INSTRUCTION:
+            //AUIPC
+            break;
+        case Y0_INSTRUCTION:
+            switch (f3) {
+                case 0b000: //cmp_eq (signed) 
+                    data_temp = ((int32_t)a == (int32_t)b) ? 1 : 0;
+                    scc = data_temp;
+                break;
+                case 0b001: //cmp_lt (signed) 
+                    data_temp = ((int32_t)a < (int32_t)b) ? 1 : 0;
+                    scc = data_temp;
+                break;
+                case 0b010: //cmp_ge (signed) 
+                    data_temp = ((int32_t)a >= (int32_t)b) ? 1 : 0;
+                    scc = data_temp;
+                break;
+                case 0b011: //cmp_ltu (unsigned) 
+                    data_temp = (a < b) ? 1 : 0;
+                    scc = data_temp;
+                break;
+                case 0b100: //cmp_geu (unsigned)
+                    data_temp = (a >= b) ? 1 : 0;
+                    scc = data_temp;
+                break;
 
+            }
+            break;
+        case Y1_INSTRUCTION:
+            break;
+        case Y2_INSTRUCTION:
+            break;
+        case Y3_INSTRUCTION:
             break;
     }
 }
@@ -340,12 +429,23 @@ int main() {
     while (pc_idx != instruction_memory.size()) {
         ImmediateGenerator imm = immediate(instruction_memory[pc_idx]);
         DecodeInstruction d = decode(instruction_memory[pc_idx]);
-        evaluate_instruction(d.opcode, d.funct3, d.funct7, d.rs1, d.rs2, d.rd, imm.i_type, w.sgpr);
+
+        int32_t immediate_chosen = choose_immediate(d.opcode, imm.r_type, imm.i_type, imm.s_type, imm.u_type, 
+                                                    imm.j_type, imm.y0_type, imm.y1_type, imm.y2_type, imm.y3_type);
+
+        evaluate_instruction(d.opcode, d.funct3, d.funct7, d.rs1, d.rs2, d.rd, immediate_chosen, w.sgpr, w.scc);
         dump("intermediate", instruction_memory[pc_idx], w.pc, d.rd, 600, 600, w.sgpr);
         w.pc += 4;
         pc_idx = w.pc/4;
     }
     //print the final wavestate out at the end.
+
+
+
+
+
+    //perform constrained testing for edge cases, then return to the rtl to compare each against one another. Figure out how to make the two play nice as well
+
 
     return 0;
 }
